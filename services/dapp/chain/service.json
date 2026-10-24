@@ -1,0 +1,10 @@
+{
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "chain",
+  "appType": "bring-your-own",
+  "stack": "dapp",
+  "port": 4200,
+  "healthCheckPath": "/health",
+  "image": "ghcr.io/foundry-rs/foundry:stable"
+}
