@@ -1,0 +1,35 @@
+name: retry live demos
+
+# Every 15 minutes: start a live run again for a demo whose last one failed, and drop live/<id>
+# branches whose run is over. Works from GitHub alone, so it keeps going when the Worker's
+# storage is full. Rules and limits: scripts/live-sweep.mjs.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: retry-live
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/live-sweep.test.mjs
+      - run: node scripts/live-sweep.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MAX_LIVE: ${{ vars.MAX_LIVE || 20 }}

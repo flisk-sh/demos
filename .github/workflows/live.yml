@@ -3,8 +3,15 @@ name: live demo
 # Runs one built demo for real: `flisk up` (Docker + Tilt) on a GitHub-hosted runner,
 # exposed through two Cloudflare quick tunnels. The demo page links to them while the job lives.
 #
-# The payload carries the demo id only. The Worker (demo.flisk.sh) holds the slot,
-# the tunnel links and the time limit. GitHub kills jobs after 6h, hence the timeout.
+# Three ways in, all carrying the demo id only:
+#   - push: every demo branch has a trigger file that calls this workflow (workflow_call),
+#   - repository_dispatch: the build, for branches pushed without that file,
+#   - workflow_dispatch: by hand, or by retry-live.yml when a run failed.
+#
+# Live state lives here, not in the Worker's storage: while the demo is up, branch live/<id>
+# holds live.json with the tunnel links and the end time; the run deletes it when it ends.
+# demo.flisk.sh reads that branch, so a full KV quota can never keep a demo off the air.
+# GitHub kills jobs after 6h, hence the timeout.
 
 run-name: live ${{ github.event.client_payload.id || inputs.id }}
 
@@ -16,13 +23,17 @@ on:
       id:
         description: demo id, e.g. flisk_sh-store-22dc2b
         required: true
+  workflow_call:
+    inputs:
+      id:
+        description: demo id or its branch name (demo/<id>)
+        type: string
+        required: true
 
+# contents: write pushes and deletes live/<id>; actions: read counts the live runs.
 permissions:
-  contents: read
-
-concurrency:
-  group: live-${{ github.event.client_payload.id || inputs.id }}
-  cancel-in-progress: false
+  contents: write
+  actions: read
 
 env:
   ID: ${{ github.event.client_payload.id || inputs.id }}
@@ -31,18 +42,25 @@ env:
   CLOUDFLARED_VERSION: 2026.10.3
   BUN_VERSION: 1.2.x
   LIVE_MINUTES: ${{ vars.LIVE_MINUTES || 120 }}
+  MAX_LIVE: ${{ vars.MAX_LIVE || 20 }}
 
 jobs:
   live:
     runs-on: ubuntu-latest
     timeout-minutes: 355
+    concurrency:
+      group: live-${{ github.event.client_payload.id || inputs.id }}
+      cancel-in-progress: false
     steps:
+      # The trigger file in a demo branch passes the branch name, demo/<id>.
       - name: Check the demo id
         run: |
+          ID="${ID#demo/}"
           if [[ ! "$ID" =~ ^[a-z0-9_-]{1,64}$ ]]; then
             echo "bad demo id: $ID" >&2
             exit 1
           fi
+          echo "ID=$ID" >> "$GITHUB_ENV"
 
       - name: Checkout ops scripts (main)
         uses: actions/checkout@v4
@@ -67,27 +85,21 @@ jobs:
           echo "PROJECT=$DIR" >> "$GITHUB_ENV"
           echo "project folder: $DIR"
 
+      # At most MAX_LIVE demos run at once, so the shared runner pool keeps room for real CI.
+      # This run counts itself. When full it fails, and retry-live.yml tries again once there is room.
       - name: Claim a live slot
         id: claim
         env:
-          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          code=$(curl -sS -o "$RUNNER_TEMP/claim.json" -w '%{http_code}' -X POST \
-            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
-            -d '{"phase":"claim"}' "https://demo.flisk.sh/v1/demo/$ID/live")
-          if [ "$code" = 409 ]; then
-            # All live slots are busy. Not an error: the demo page still has the plan and the repo.
-            echo "::notice::all live slots are busy; this demo stays static"
-            echo "live=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$code" != 200 ] || ! jq -e '.ok == true' "$RUNNER_TEMP/claim.json" >/dev/null; then
-            echo "claim refused ($code):"
-            cat "$RUNNER_TEMP/claim.json"
+          running=$(gh run list -R "$GITHUB_REPOSITORY" --status in_progress -L 100 --json displayTitle \
+            --jq '[.[] | select(.displayTitle | startswith("live "))] | length')
+          echo "live runs in progress: $running (max $MAX_LIVE)"
+          if [ "$running" -gt "$MAX_LIVE" ]; then
+            echo "::error::all $MAX_LIVE live slots are busy; retry-live.yml retries this demo later"
             exit 1
           fi
           echo "live=true" >> "$GITHUB_OUTPUT"
-          echo "slot claimed"
 
       - uses: actions/setup-node@v4
         if: steps.claim.outputs.live == 'true'
@@ -178,22 +190,24 @@ jobs:
             echo "- API health: $app_url/api/health"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # One commit on branch live/<id>: demo.flisk.sh reads live.json from it. A push with
+      # GITHUB_TOKEN starts no workflow, and the branch has no workflow file anyway.
       - name: Publish the live links
         if: steps.claim.outputs.live == 'true'
         env:
-          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           until_ms=$(( ($(date +%s) + LIVE_MINUTES * 60) * 1000 ))
-          body=$(jq -nc --arg tilt "$(cat "$RUNNER_TEMP/tilt-url")" --arg app "$(cat "$RUNNER_TEMP/app-url")" \
-            --argjson until "$until_ms" '{phase:"up", tilt:$tilt, app:$app, until:$until}')
-          code=$(curl -sS -o "$RUNNER_TEMP/up.json" -w '%{http_code}' -X POST \
-            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
-            -d "$body" "https://demo.flisk.sh/v1/demo/$ID/live")
-          if [ "$code" != 200 ]; then
-            echo "publish failed ($code):"
-            cat "$RUNNER_TEMP/up.json"
-            exit 1
-          fi
+          dir="$RUNNER_TEMP/live-state"
+          mkdir -p "$dir"
+          jq -n --arg tilt "$(cat "$RUNNER_TEMP/tilt-url")" --arg app "$(cat "$RUNNER_TEMP/app-url")" \
+            --argjson until "$until_ms" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{tilt:$tilt, app:$app, until:$until, run:$run}' > "$dir/live.json"
+          cat "$dir/live.json"
+          git -C "$dir" init -q -b "live/$ID"
+          git -C "$dir" add live.json
+          git -C "$dir" -c user.name=flisk-demo -c user.email=demo@flisk.sh commit -q -m "live: $ID"
+          git -C "$dir" push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/live/$ID"
           echo "live until $(date -u -d "@$((until_ms / 1000))" +%H:%M) UTC"
 
       - name: Keep the demo up
@@ -207,9 +221,7 @@ jobs:
       - name: Take the demo down
         if: always() && steps.claim.outputs.live == 'true'
         env:
-          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -sS -o /dev/null -X POST \
-            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
-            -d '{"phase":"down"}' "https://demo.flisk.sh/v1/demo/$ID/live" || true
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/live/$ID" >/dev/null 2>&1 || true
           cd "$GITHUB_WORKSPACE/$PROJECT" && flisk down || true
