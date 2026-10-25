@@ -1,0 +1,22 @@
+{
+  "port": 4000,
+  "dependsOn": [],
+  "dev": {
+    "command": "uvicorn main:app --app-dir src --host 0.0.0.0 --port ${PORT:-4000} --reload --reload-dir src",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "healthCheckPath": "/health",
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "api",
+  "appType": "backend",
+  "featuresEnabled": [
+    "redis"
+  ],
+  "name": "api",
+  "type": "backend",
+  "stack": "app",
+  "language": "python"
+}
