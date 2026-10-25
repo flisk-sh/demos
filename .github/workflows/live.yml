@@ -162,6 +162,11 @@ jobs:
           APP_HOST=$(sed -E 's#^http://([^:]+):.*#\1#' <<<"$APP_LOCAL")
           APP_PORT=$(sed -E 's#.*:([0-9]+)$#\1#' <<<"$APP_LOCAL")
           echo "APP_HOST=$APP_HOST" >> "$GITHUB_ENV"
+          # The first frontend's route, for example reservation-app in /reservation-app/health. A stack with no
+          # frontend named web used to get a link to /web/, which is a 404.
+          FRONTEND=$(grep -oE 'http://app\.[a-z0-9.-]+\.localhost[^ /]*/[a-z0-9-]+/' "$RUNNER_TEMP/dry-run.txt" | head -1 | awk -F/ '{print $(NF-1)}')
+          echo "FRONTEND=${FRONTEND:-web}" >> "$GITHUB_ENV"
+          echo "frontend route: ${FRONTEND:-web}"
           echo "APP_PORT=$APP_PORT" >> "$GITHUB_ENV"
 
       # Tilt UI (read-only proxy in front of 10350) and the app, each behind its own tunnel.
@@ -186,11 +191,11 @@ jobs:
           tilt_url=$(tunnel_url "$RUNNER_TEMP/tilt-tunnel.log")
           app_url=$(tunnel_url "$RUNNER_TEMP/app-tunnel.log")
           echo "$tilt_url" > "$RUNNER_TEMP/tilt-url"
-          echo "$app_url/web/" > "$RUNNER_TEMP/app-url"
+          echo "$app_url/$FRONTEND/" > "$RUNNER_TEMP/app-url"
           {
             echo "### Live demo"
             echo "- Tilt UI (read-only): $tilt_url"
-            echo "- App: $app_url/web/"
+            echo "- App: $app_url/$FRONTEND/"
             echo "- API health: $app_url/api/health"
           } >> "$GITHUB_STEP_SUMMARY"
 
