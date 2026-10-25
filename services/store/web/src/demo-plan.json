@@ -1,0 +1,40 @@
+{
+  "handle": "flisk_sh",
+  "stack": "store",
+  "summary": "web · api · api-migrator · jobs",
+  "commands": [
+    "git clone -b demo/flisk_sh-store-22dc2b https://github.com/flisk-sh/demos.git store-demo",
+    "cd store-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "vue app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    },
+    {
+      "name": "jobs",
+      "appType": "worker",
+      "note": "background work: email"
+    }
+  ],
+  "board": {
+    "noun": "products",
+    "one": "product",
+    "seedFile": "services/store/api/src/seed.ts",
+    "hasJobs": true
+  }
+}

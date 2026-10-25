@@ -1,0 +1,1 @@
+export const SEED_SQL = "insert into board_items (id, title, done) values (1, 'Trail runner', true) on conflict do nothing;\ninsert into board_items (id, title, done) values (2, 'Insulated bottle', false) on conflict do nothing;\ninsert into board_items (id, title, done) values (3, 'Wool socks', false) on conflict do nothing;\n";

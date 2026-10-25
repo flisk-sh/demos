@@ -1,0 +1,26 @@
+{
+  "port": 4100,
+  "dependsOn": [
+    "api-migrator"
+  ],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run worker",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "jobs",
+  "appType": "worker",
+  "featuresEnabled": [
+    "nats"
+  ],
+  "name": "jobs",
+  "type": "worker",
+  "stack": "store"
+}
