@@ -1,0 +1,30 @@
+{
+  "port": 4300,
+  "dependsOn": [
+    "chain",
+    "api-migrator"
+  ],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run worker",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "indexer",
+  "appType": "worker",
+  "featuresEnabled": [
+    "nats"
+  ],
+  "name": "indexer",
+  "type": "worker",
+  "stack": "dapp",
+  "params": {
+    "RPC_URL": "http://chain:3000"
+  }
+}
