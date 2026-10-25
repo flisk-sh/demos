@@ -166,6 +166,9 @@ jobs:
           # frontend named web used to get a link to /web/, which is a 404.
           FRONTEND=$(grep -oE 'http://app\.[a-z0-9.-]+\.localhost[^ /]*/[a-z0-9-]+/' "$RUNNER_TEMP/dry-run.txt" | head -1 | awk -F/ '{print $(NF-1)}')
           echo "FRONTEND=${FRONTEND:-web}" >> "$GITHUB_ENV"
+          # Every frontend route in the dry-run output, in order: a restaurant has two (reservation-app, floor-app).
+          grep -oE 'http://app\.[a-z0-9.-]+\.localhost[^ /]*/[a-z0-9-]+/' "$RUNNER_TEMP/dry-run.txt" | awk -F/ '{print $(NF-1)}' | awk '!seen[$0]++' > "$RUNNER_TEMP/frontends.txt" || true
+          echo "frontends: $(paste -sd' ' "$RUNNER_TEMP/frontends.txt")"
           echo "frontend route: ${FRONTEND:-web}"
           echo "APP_PORT=$APP_PORT" >> "$GITHUB_ENV"
 
@@ -209,9 +212,13 @@ jobs:
           until_ms=$(( ($(date +%s) + LIVE_MINUTES * 60) * 1000 ))
           dir="$RUNNER_TEMP/live-state"
           mkdir -p "$dir"
+          # frontends: each frontend's name and its route under the app tunnel, so the page can show them all.
+          front=$(jq -Rn --arg root "$(sed -E 's#^(https://[^/]+).*#\1#' "$RUNNER_TEMP/app-url")" \
+            '[inputs | select(length > 0) | {name: ., url: ($root + "/" + . + "/")}]' < "$RUNNER_TEMP/frontends.txt")
           jq -n --arg tilt "$(cat "$RUNNER_TEMP/tilt-url")" --arg app "$(cat "$RUNNER_TEMP/app-url")" \
             --argjson until "$until_ms" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            '{tilt:$tilt, app:$app, until:$until, run:$run}' > "$dir/live.json"
+            --argjson frontends "$front" \
+            '{tilt:$tilt, app:$app, until:$until, run:$run, frontends:$frontends}' > "$dir/live.json"
           cat "$dir/live.json"
           git -C "$dir" init -q -b "live/$ID"
           git -C "$dir" add live.json
