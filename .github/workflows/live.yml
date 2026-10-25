@@ -149,13 +149,15 @@ jobs:
           echo "APP_PORT=$APP_PORT" >> "$GITHUB_ENV"
 
       # Tilt UI (read-only proxy in front of 10350) and the app, each behind its own tunnel.
+      # The app tunnel goes through app-proxy.mjs, so /api/* reaches the api on the same origin as the page.
       - name: Open tunnels
         if: steps.claim.outputs.live == 'true'
         run: |
           setsid nohup node "$GITHUB_WORKSPACE/ops/scripts/readonly-proxy.mjs" > "$RUNNER_TEMP/proxy.log" 2>&1 < /dev/null &
+          setsid nohup env APP_HOST="$APP_HOST" TRAEFIK_PORT="$APP_PORT" PROXY_PORT=10352 \
+            node "$GITHUB_WORKSPACE/ops/scripts/app-proxy.mjs" > "$RUNNER_TEMP/app-proxy.log" 2>&1 < /dev/null &
           setsid nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:10351 > "$RUNNER_TEMP/tilt-tunnel.log" 2>&1 < /dev/null &
-          setsid nohup cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:${APP_PORT}" \
-            --http-host-header "$APP_HOST" > "$RUNNER_TEMP/app-tunnel.log" 2>&1 < /dev/null &
+          setsid nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:10352 > "$RUNNER_TEMP/app-tunnel.log" 2>&1 < /dev/null &
           tunnel_url() {
             for _ in $(seq 60); do
               url=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$1" | head -1 || true)
@@ -173,6 +175,7 @@ jobs:
             echo "### Live demo"
             echo "- Tilt UI (read-only): $tilt_url"
             echo "- App: $app_url/web/"
+            echo "- API health: $app_url/api/health"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish the live links
