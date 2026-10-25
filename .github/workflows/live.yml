@@ -103,13 +103,22 @@ jobs:
           cloudflared --version
           flisk --version
 
+      # Containers run as a different uid than the runner, and on Linux the bind-mounted
+      # checkout is not writable for them (api-migrator: EACCES mkdir /app/generated).
+      # Docker Desktop on macOS hides this. Workaround until Flisk fixes it upstream.
+      - name: Let containers write to the checkout
+        run: chmod -R a+rwX "$GITHUB_WORKSPACE/$PROJECT"
+
       # No secrets from here on: this step runs the demo's own code.
+      # A red resource still leaves Tilt running, and the Tilt UI shows why, so go on to the tunnels.
       - name: flisk up
         run: |
           cd "$GITHUB_WORKSPACE/$PROJECT"
           [ -f .env.example ] && [ ! -f .env ] && cp .env.example .env
           flisk project --yes
-          timeout 30m flisk up
+          if ! timeout 30m flisk up; then
+            echo "::warning::flisk up reported a failing resource; Tilt stays up so the live page shows it"
+          fi
           flisk status || true
 
       - name: Read the local URLs
