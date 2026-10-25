@@ -1,0 +1,30 @@
+{
+  "handle": "js",
+  "stack": "app",
+  "summary": "web · api",
+  "commands": [
+    "git clone -b demo/js-app-02b785 https://github.com/flisk-sh/demos.git app-demo",
+    "cd app-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    }
+  ],
+  "board": {
+    "noun": "tasks",
+    "one": "task",
+    "seedFile": "services/app/api/src/seed.ts",
+    "hasJobs": false
+  }
+}
