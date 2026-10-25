@@ -1,0 +1,187 @@
+name: live demo
+
+# Runs one built demo for real: `flisk up` (Docker + Tilt) on a GitHub-hosted runner,
+# exposed through two Cloudflare quick tunnels. The demo page links to them while the job lives.
+#
+# The payload carries the demo id only. The Worker (demo.flisk.sh) holds the slot,
+# the tunnel links and the time limit. GitHub kills jobs after 6h, hence the timeout.
+
+run-name: live ${{ github.event.client_payload.id || inputs.id }}
+
+on:
+  repository_dispatch:
+    types: [live-demo]
+  workflow_dispatch:
+    inputs:
+      id:
+        description: demo id, e.g. flisk_sh-store-22dc2b
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-${{ github.event.client_payload.id || inputs.id }}
+  cancel-in-progress: false
+
+env:
+  ID: ${{ github.event.client_payload.id || inputs.id }}
+  TILT_VERSION: 0.37.8
+  FLISK_VERSION: 1.3.207
+  CLOUDFLARED_VERSION: 2026.10.3
+  BUN_VERSION: 1.2.x
+  LIVE_MINUTES: ${{ vars.LIVE_MINUTES || 120 }}
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Check the demo id
+        run: |
+          if [[ ! "$ID" =~ ^[a-z0-9_-]{1,64}$ ]]; then
+            echo "bad demo id: $ID" >&2
+            exit 1
+          fi
+
+      - name: Checkout ops scripts (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: ops
+          persist-credentials: false
+
+      - name: Checkout the demo branch
+        uses: actions/checkout@v4
+        with:
+          ref: demo/${{ env.ID }}
+          path: demo-src
+          persist-credentials: false
+
+      # flisk names the project after its folder, so the demo is moved to <stack>-demo.
+      - name: Name the project folder
+        run: |
+          STACK=$(sed -E 's/-[0-9a-f]{6}$//; s/.*-//' <<<"$ID")
+          DIR="${STACK}-demo"
+          mv demo-src "$GITHUB_WORKSPACE/$DIR"
+          echo "PROJECT=$DIR" >> "$GITHUB_ENV"
+          echo "project folder: $DIR"
+
+      - name: Claim a live slot
+        id: claim
+        env:
+          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+        run: |
+          code=$(curl -sS -o "$RUNNER_TEMP/claim.json" -w '%{http_code}' -X POST \
+            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
+            -d '{"phase":"claim"}' "https://demo.flisk.sh/v1/demo/$ID/live")
+          if [ "$code" != 200 ] || ! jq -e '.ok == true' "$RUNNER_TEMP/claim.json" >/dev/null; then
+            echo "claim refused ($code):"
+            cat "$RUNNER_TEMP/claim.json"
+            exit 1
+          fi
+          echo "slot claimed"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install Tilt, cloudflared and flisk
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/tilt.tgz" \
+            "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.x86_64.tar.gz"
+          sudo tar -xz -C /usr/local/bin -f "$RUNNER_TEMP/tilt.tgz" tilt
+          curl -fsSL -o "$RUNNER_TEMP/cloudflared.deb" \
+            "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb"
+          sudo dpkg -i "$RUNNER_TEMP/cloudflared.deb"
+          npm i -g "@flisk-sh/flisk@${FLISK_VERSION}"
+          tilt version
+          cloudflared --version
+          flisk --version
+
+      # No secrets from here on: this step runs the demo's own code.
+      - name: flisk up
+        run: |
+          cd "$GITHUB_WORKSPACE/$PROJECT"
+          [ -f .env.example ] && [ ! -f .env ] && cp .env.example .env
+          flisk doctor
+          timeout 30m flisk up
+          flisk status || true
+
+      - name: Read the local URLs
+        run: |
+          cd "$GITHUB_WORKSPACE/$PROJECT"
+          flisk up --dry-run | tee "$RUNNER_TEMP/dry-run.txt"
+          APP_LOCAL=$(grep -oE 'http://app\.[a-z0-9.-]+\.localhost:[0-9]+' "$RUNNER_TEMP/dry-run.txt" | head -1)
+          if [ -z "$APP_LOCAL" ]; then
+            echo "no app URL in flisk up --dry-run output" >&2
+            exit 1
+          fi
+          APP_HOST=$(sed -E 's#^http://([^:]+):.*#\1#' <<<"$APP_LOCAL")
+          APP_PORT=$(sed -E 's#.*:([0-9]+)$#\1#' <<<"$APP_LOCAL")
+          echo "APP_HOST=$APP_HOST" >> "$GITHUB_ENV"
+          echo "APP_PORT=$APP_PORT" >> "$GITHUB_ENV"
+
+      # Tilt UI (read-only proxy in front of 10350) and the app, each behind its own tunnel.
+      - name: Open tunnels
+        run: |
+          setsid nohup node "$GITHUB_WORKSPACE/ops/scripts/readonly-proxy.mjs" > "$RUNNER_TEMP/proxy.log" 2>&1 < /dev/null &
+          setsid nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:10351 > "$RUNNER_TEMP/tilt-tunnel.log" 2>&1 < /dev/null &
+          setsid nohup cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:${APP_PORT}" \
+            --http-host-header "$APP_HOST" > "$RUNNER_TEMP/app-tunnel.log" 2>&1 < /dev/null &
+          tunnel_url() {
+            for _ in $(seq 60); do
+              url=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$1" | head -1 || true)
+              if [ -n "$url" ]; then echo "$url"; return 0; fi
+              sleep 2
+            done
+            echo "no tunnel URL in $1" >&2
+            return 1
+          }
+          tilt_url=$(tunnel_url "$RUNNER_TEMP/tilt-tunnel.log")
+          app_url=$(tunnel_url "$RUNNER_TEMP/app-tunnel.log")
+          echo "$tilt_url" > "$RUNNER_TEMP/tilt-url"
+          echo "$app_url/web/" > "$RUNNER_TEMP/app-url"
+          {
+            echo "### Live demo"
+            echo "- Tilt UI (read-only): $tilt_url"
+            echo "- App: $app_url/web/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the live links
+        env:
+          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+        run: |
+          until_ms=$(( ($(date +%s) + LIVE_MINUTES * 60) * 1000 ))
+          body=$(jq -nc --arg tilt "$(cat "$RUNNER_TEMP/tilt-url")" --arg app "$(cat "$RUNNER_TEMP/app-url")" \
+            --argjson until "$until_ms" '{phase:"up", tilt:$tilt, app:$app, until:$until}')
+          code=$(curl -sS -o "$RUNNER_TEMP/up.json" -w '%{http_code}' -X POST \
+            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
+            -d "$body" "https://demo.flisk.sh/v1/demo/$ID/live")
+          if [ "$code" != 200 ]; then
+            echo "publish failed ($code):"
+            cat "$RUNNER_TEMP/up.json"
+            exit 1
+          fi
+          echo "live until $(date -u -d "@$((until_ms / 1000))" +%H:%M) UTC"
+
+      - name: Keep the demo up
+        run: |
+          minutes=$LIVE_MINUTES
+          if [ "$minutes" -gt 330 ]; then minutes=330; fi
+          echo "staying up for ${minutes} minutes"
+          sleep "$((minutes * 60))"
+
+      - name: Take the demo down
+        if: always() && steps.claim.outcome == 'success'
+        env:
+          CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
+        run: |
+          curl -sS -o /dev/null -X POST \
+            -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
+            -d '{"phase":"down"}' "https://demo.flisk.sh/v1/demo/$ID/live" || true
+          cd "$GITHUB_WORKSPACE/$PROJECT" && flisk down || true
