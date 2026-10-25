@@ -1,0 +1,30 @@
+{
+  "port": 3000,
+  "dependsOn": [
+    "api"
+  ],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run dev",
+    "watch": [
+      "src/**/*",
+      "public/**/*"
+    ]
+  },
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "web",
+  "appType": "frontend",
+  "featuresEnabled": [
+    "api-client",
+    "env-config",
+    "api-index"
+  ],
+  "name": "web",
+  "type": "frontend",
+  "stack": "agents",
+  "framework": "react"
+}
