@@ -1,0 +1,50 @@
+{
+  "handle": "yourhandle",
+  "stack": "dapp",
+  "summary": "web · api · api-migrator · jobs · chain · indexer",
+  "commands": [
+    "git clone -b demo/yourhandle-dapp-c33509 https://github.com/flisk-sh/demos.git dapp-demo",
+    "cd dapp-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    },
+    {
+      "name": "jobs",
+      "appType": "worker",
+      "note": "background work: email"
+    },
+    {
+      "name": "chain",
+      "appType": "bring-your-own",
+      "note": "local Anvil node for your contracts. Not yet run end to end with flisk up: anvil must listen on the container port Flisk routes to"
+    },
+    {
+      "name": "indexer",
+      "appType": "worker",
+      "note": "reads contract events into Postgres"
+    }
+  ],
+  "board": {
+    "noun": "transactions",
+    "one": "transaction",
+    "seedFile": "services/dapp/api/src/seed.ts",
+    "hasJobs": true
+  }
+}
