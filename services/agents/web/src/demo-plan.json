@@ -1,0 +1,40 @@
+{
+  "handle": "MY_HANDLE",
+  "stack": "agents",
+  "summary": "web · api · api-migrator · assistant",
+  "commands": [
+    "git clone -b demo/my_handle-agents-09e2f3 https://github.com/flisk-sh/demos.git agents-demo",
+    "cd agents-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    },
+    {
+      "name": "assistant",
+      "appType": "agent",
+      "note": "/health, /ready, x-session-id routing, checkpoints survive restarts"
+    }
+  ],
+  "board": {
+    "noun": "conversations",
+    "one": "conversation",
+    "seedFile": "services/agents/api/src/seed.ts",
+    "hasJobs": false
+  }
+}
