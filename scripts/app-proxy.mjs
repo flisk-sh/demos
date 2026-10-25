@@ -9,6 +9,8 @@
 // never reached from here: readonly-proxy.mjs is the only way to see it.
 
 import http from "node:http";
+import { readFileSync } from "node:fs";
+import { route as routeFor, parseRoutes } from "./app-routes.mjs";
 
 const LISTEN_PORT = Number(process.env.PROXY_PORT || 10352);
 const TRAEFIK = { host: "127.0.0.1", port: Number(process.env.TRAEFIK_PORT) };
@@ -19,10 +21,12 @@ if (!APP_HOST || !/^app\.[a-z0-9.-]+\.localhost$/.test(APP_HOST)) throw new Erro
 if (!TRAEFIK.port) throw new Error("TRAEFIK_PORT is required");
 const API_HOST = APP_HOST.replace(/^app\./, "api.");
 
+// The other apis of the stack, from the live run's routes file (see app-routes.mjs). Empty when there is none.
+const ROUTES = process.env.ROUTES_FILE ? parseRoutes(readFileSync(process.env.ROUTES_FILE, "utf8")) : {};
+
 // Where a request from the tunnel goes: which Host Traefik routes on, and the path it gets.
 function route(url) {
-  if (/^\/api(\/|\?|$)/.test(url)) return { host: API_HOST, path: url.replace(/^\/api(?=\/|\?|$)/, "/api/api") };
-  return { host: APP_HOST, path: url };
+  return routeFor(url, APP_HOST, ROUTES);
 }
 
 const server = http.createServer((req, res) => {
