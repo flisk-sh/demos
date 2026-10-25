@@ -85,21 +85,25 @@ jobs:
           echo "PROJECT=$DIR" >> "$GITHUB_ENV"
           echo "project folder: $DIR"
 
-      # At most MAX_LIVE demos run at once, so the shared runner pool keeps room for real CI.
-      # This run counts itself. When full it fails, and retry-live.yml tries again once there is room.
+      # At most MAX_LIVE demos are live at once, so the shared runner pool keeps room for real CI. A slot is a published
+      # live/<id> branch. When all slots are taken this run waits for one (checking every 30 s, up to 20 minutes) instead of
+      # failing, so a demo built during a busy hour still goes live. If none frees up, it fails and retry-live.yml tries again.
       - name: Claim a live slot
         id: claim
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          running=$(gh run list -R "$GITHUB_REPOSITORY" --status in_progress -L 100 --json displayTitle \
-            --jq '[.[] | select(.displayTitle | startswith("live "))] | length')
-          echo "live runs in progress: $running (max $MAX_LIVE)"
-          if [ "$running" -gt "$MAX_LIVE" ]; then
-            echo "::error::all $MAX_LIVE live slots are busy; retry-live.yml retries this demo later"
-            exit 1
-          fi
-          echo "live=true" >> "$GITHUB_OUTPUT"
+          for attempt in $(seq 40); do
+            taken=$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/heads/live/" --jq 'length' 2>/dev/null || echo 0)
+            echo "live slots taken: $taken of $MAX_LIVE (check $attempt)"
+            if [ "$taken" -lt "$MAX_LIVE" ]; then
+              echo "live=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::no live slot freed up in 20 minutes; retry-live.yml retries this demo later"
+          exit 1
 
       - uses: actions/setup-node@v4
         if: steps.claim.outputs.live == 'true'
