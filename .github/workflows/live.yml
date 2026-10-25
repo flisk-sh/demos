@@ -75,22 +75,32 @@ jobs:
           code=$(curl -sS -o "$RUNNER_TEMP/claim.json" -w '%{http_code}' -X POST \
             -H "authorization: Bearer $CALLBACK_TOKEN" -H 'content-type: application/json' \
             -d '{"phase":"claim"}' "https://demo.flisk.sh/v1/demo/$ID/live")
+          if [ "$code" = 409 ]; then
+            # All live slots are busy. Not an error: the demo page still has the plan and the repo.
+            echo "::notice::all live slots are busy; this demo stays static"
+            echo "live=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$code" != 200 ] || ! jq -e '.ok == true' "$RUNNER_TEMP/claim.json" >/dev/null; then
             echo "claim refused ($code):"
             cat "$RUNNER_TEMP/claim.json"
             exit 1
           fi
+          echo "live=true" >> "$GITHUB_OUTPUT"
           echo "slot claimed"
 
       - uses: actions/setup-node@v4
+        if: steps.claim.outputs.live == 'true'
         with:
           node-version: 22
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.claim.outputs.live == 'true'
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install Tilt, cloudflared and flisk
+        if: steps.claim.outputs.live == 'true'
         run: |
           curl -fsSL -o "$RUNNER_TEMP/tilt.tgz" \
             "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.x86_64.tar.gz"
@@ -107,11 +117,13 @@ jobs:
       # checkout is not writable for them (api-migrator: EACCES mkdir /app/generated).
       # Docker Desktop on macOS hides this. Workaround until Flisk fixes it upstream.
       - name: Let containers write to the checkout
+        if: steps.claim.outputs.live == 'true'
         run: chmod -R a+rwX "$GITHUB_WORKSPACE/$PROJECT"
 
       # No secrets from here on: this step runs the demo's own code.
       # A red resource still leaves Tilt running, and the Tilt UI shows why, so go on to the tunnels.
       - name: flisk up
+        if: steps.claim.outputs.live == 'true'
         run: |
           cd "$GITHUB_WORKSPACE/$PROJECT"
           [ -f .env.example ] && [ ! -f .env ] && cp .env.example .env
@@ -122,6 +134,7 @@ jobs:
           flisk status || true
 
       - name: Read the local URLs
+        if: steps.claim.outputs.live == 'true'
         run: |
           cd "$GITHUB_WORKSPACE/$PROJECT"
           flisk up --dry-run | tee "$RUNNER_TEMP/dry-run.txt"
@@ -137,6 +150,7 @@ jobs:
 
       # Tilt UI (read-only proxy in front of 10350) and the app, each behind its own tunnel.
       - name: Open tunnels
+        if: steps.claim.outputs.live == 'true'
         run: |
           setsid nohup node "$GITHUB_WORKSPACE/ops/scripts/readonly-proxy.mjs" > "$RUNNER_TEMP/proxy.log" 2>&1 < /dev/null &
           setsid nohup cloudflared tunnel --no-autoupdate --url http://127.0.0.1:10351 > "$RUNNER_TEMP/tilt-tunnel.log" 2>&1 < /dev/null &
@@ -162,6 +176,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish the live links
+        if: steps.claim.outputs.live == 'true'
         env:
           CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
         run: |
@@ -179,6 +194,7 @@ jobs:
           echo "live until $(date -u -d "@$((until_ms / 1000))" +%H:%M) UTC"
 
       - name: Keep the demo up
+        if: steps.claim.outputs.live == 'true'
         run: |
           minutes=$LIVE_MINUTES
           if [ "$minutes" -gt 330 ]; then minutes=330; fi
@@ -186,7 +202,7 @@ jobs:
           sleep "$((minutes * 60))"
 
       - name: Take the demo down
-        if: always() && steps.claim.outcome == 'success'
+        if: always() && steps.claim.outputs.live == 'true'
         env:
           CALLBACK_TOKEN: ${{ secrets.CALLBACK_TOKEN }}
         run: |
