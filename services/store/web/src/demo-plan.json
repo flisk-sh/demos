@@ -1,0 +1,35 @@
+{
+  "handle": "yourhandle",
+  "stack": "store",
+  "summary": "web · api · api-migrator",
+  "commands": [
+    "git clone -b demo/yourhandle-store-2bdcb2 https://github.com/flisk-sh/demos.git store-demo",
+    "cd store-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "backend-for-frontend: the only service holding Thor Commerce keys"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    }
+  ],
+  "board": {
+    "noun": "products",
+    "one": "product",
+    "seedFile": "services/store/api/src/seed.ts",
+    "hasJobs": false
+  }
+}
