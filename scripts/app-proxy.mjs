@@ -5,7 +5,7 @@
 //   anything  -> Traefik, Host app.<project>.localhost, path unchanged (the web is under /web/)
 //
 // /api/api is where Flisk routes the api on the host, so /api/health reaches its /health.
-// Only GET, HEAD, POST and OPTIONS pass, and websocket upgrades are GET only. Tilt is
+// The demo app's own methods pass (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS), and websocket upgrades are GET only. Tilt is
 // never reached from here: readonly-proxy.mjs is the only way to see it.
 
 import http from "node:http";
@@ -13,7 +13,7 @@ import http from "node:http";
 const LISTEN_PORT = Number(process.env.PROXY_PORT || 10352);
 const TRAEFIK = { host: "127.0.0.1", port: Number(process.env.TRAEFIK_PORT) };
 const APP_HOST = process.env.APP_HOST;
-const ALLOWED = new Set(["GET", "HEAD", "POST", "OPTIONS"]);
+const ALLOWED = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
 
 if (!APP_HOST || !/^app\.[a-z0-9.-]+\.localhost$/.test(APP_HOST)) throw new Error(`bad APP_HOST: ${APP_HOST}`);
 if (!TRAEFIK.port) throw new Error("TRAEFIK_PORT is required");
