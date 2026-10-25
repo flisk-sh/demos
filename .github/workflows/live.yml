@@ -108,7 +108,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE/$PROJECT"
           [ -f .env.example ] && [ ! -f .env ] && cp .env.example .env
-          flisk doctor
+          flisk project --yes
           timeout 30m flisk up
           flisk status || true
 
