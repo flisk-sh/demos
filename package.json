@@ -1,0 +1,17 @@
+{
+  "name": "tdk-restaurant-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/*/*"
+  ],
+  "scripts": {
+    "tdk:project": "tdk project --yes",
+    "tdk:dry-run": "tdk up --dry-run",
+    "tdk:up": "tdk up"
+  },
+  "devDependencies": {
+    "@flisk-sh/flisk": "1.3.190"
+  }
+}

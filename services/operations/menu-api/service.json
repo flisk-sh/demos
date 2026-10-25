@@ -1,0 +1,11 @@
+{
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "menu-api",
+  "appType": "backend",
+  "stack": "operations",
+  "port": 4120,
+  "databaseName": "Flisk_restaurant",
+  "dependsOn": ["restaurant-migrator"],
+  "healthCheckPath": "/health"
+}
