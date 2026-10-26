@@ -1,0 +1,9 @@
+{
+  "name": "app-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/*/*"
+  ]
+}
