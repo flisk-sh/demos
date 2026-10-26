@@ -1,0 +1,35 @@
+{
+  "handle": "joomla",
+  "stack": "app",
+  "summary": "web · api · api-migrator",
+  "commands": [
+    "git clone -b demo/joomla-app-7f7e0c https://github.com/flisk-sh/demos.git app-demo",
+    "cd app-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    }
+  ],
+  "board": {
+    "noun": "tasks",
+    "one": "task",
+    "seedFile": "services/app/api/src/seed.ts",
+    "hasJobs": false
+  }
+}
