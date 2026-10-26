@@ -20,9 +20,9 @@ RUN bun run build
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-  CMD bun -e "fetch('http://localhost:4001/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+  CMD bun -e "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 
-ENV PORT=4001
-EXPOSE 4001
+ENV PORT=3000
+EXPOSE 3000
 
 CMD ["bun", "run", "start"]

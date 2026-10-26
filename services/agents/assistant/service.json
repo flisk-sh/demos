@@ -1,5 +1,5 @@
 {
-  "port": 4100,
+  "port": 3000,
   "dependsOn": [],
   "build": {
     "dockerfile": "Dockerfile",
