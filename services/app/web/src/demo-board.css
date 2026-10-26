@@ -1,0 +1,91 @@
+:root {
+  --bg: #f6f7f9; --fg: #15171c; --muted: #5d6470; --card: #ffffff; --line: #dfe3ea;
+  --accent: #2f6fed; --ok: #1f9d55; --down: #d64545; --code-bg: #0f1218; --code-fg: #e6e9ef;
+  --pond: #e9eef7; --bubble-a: #8cc4ff; --bubble-b: #3d6fe0; --job-a: #ffd98a; --job-b: #e8922a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1116; --fg: #e8ebf0; --muted: #9aa3b2; --card: #161b22; --line: #2a313c; --accent: #6c9bff;
+    --pond: #121822; --bubble-a: #5b8fe0; --bubble-b: #22458f; --job-a: #c9913a; --job-b: #7d4d12;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0e1116; --fg: #e8ebf0; --muted: #9aa3b2; --card: #161b22; --line: #2a313c; --accent: #6c9bff;
+  --pond: #121822; --bubble-a: #5b8fe0; --bubble-b: #22458f; --job-a: #c9913a; --job-b: #7d4d12;
+}
+
+body { margin: 0; background: var(--bg); }
+.page { max-width: 960px; margin: 0 auto; padding: 0.9rem 1rem 2rem; min-height: 100vh; box-sizing: border-box;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--fg); overflow-x: hidden; }
+header { margin-bottom: 0.6rem; }
+.eyebrow { margin: 0; color: var(--accent); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; }
+h1 { margin: 0.1rem 0 0.25rem; font-size: clamp(1.25rem, 3.2vw, 1.7rem); overflow-wrap: anywhere; }
+h2 { font-size: 1.15rem; margin: 0 0 0.6rem; text-transform: capitalize; }
+.summary, .muted { color: var(--muted); overflow-wrap: anywhere; }
+.hint { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.95rem; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
+button { font: inherit; padding: 0.5rem 0.9rem; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+input[type='text'], input:not([type]) { font: inherit; flex: 1; min-width: 0; padding: 0.5rem 0.7rem; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+
+.status { list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem 1.1rem; margin: 0.5rem 0 0; padding: 0; }
+.status li { display: flex; align-items: center; gap: 0.45rem; font-weight: 600; font-size: 0.95rem; }
+.dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; background: var(--muted); }
+.status li[data-state='ok'] .dot { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+.status li[data-state='down'] .dot { background: var(--down); }
+
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; margin-top: 0.6rem; }
+.seed { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.seed p { margin: 0; }
+.add { display: flex; gap: 0.5rem; margin-bottom: 0.9rem; }
+.error { color: var(--down); margin: 0.75rem 0 0; overflow-wrap: anywhere; }
+.run { margin-top: 1.5rem; }
+pre { margin: 0; padding: 1rem; background: var(--code-bg); color: var(--code-fg); border-radius: 12px; overflow-x: auto; max-width: 100%; box-sizing: border-box; }
+
+/* The pond: a list of bubbles, each one a real button. */
+.pond { list-style: none; margin: 0; padding: 1.25rem 0.9rem; min-height: 12rem; box-sizing: border-box; max-width: 100%;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.9rem;
+  border: 1px solid var(--line); border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--bubble-a) 22%, transparent), transparent 70%), var(--pond); }
+.empty { color: var(--muted); }
+
+.bubble-wrap { position: relative; display: flex; max-width: 100%; animation: pop-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  transition: scale 0.25s ease, opacity 0.25s ease; }
+.bubble-wrap.leaving { scale: 0; opacity: 0; }
+
+.bubble { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.15rem;
+  min-width: 7.5rem; max-width: min(100%, 16rem); min-height: 4.5rem; padding: 0.7rem 1.1rem; box-sizing: border-box;
+  border: 0; border-radius: 999px; color: #fff; text-align: left; overflow-wrap: anywhere; cursor: pointer;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.6), transparent 28%),
+    linear-gradient(145deg, var(--bubble-a), var(--bubble-b));
+  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, 0.14), 0 8px 18px rgba(20, 40, 90, 0.2);
+  animation: float 6s ease-in-out infinite; transition: scale 0.25s ease, filter 0.25s ease, opacity 0.25s ease; }
+.bubble:hover { scale: 1.04; }
+.bubble-title { font-weight: 600; font-size: 0.98rem; line-height: 1.2; }
+.bubble-sub { font-size: 0.8rem; opacity: 0.92; }
+.check { position: absolute; top: 0.35rem; right: 0.75rem; font-size: 0.95rem; font-weight: 700; }
+.bubble[aria-pressed='true'] { scale: 0.84; opacity: 0.7; filter: saturate(0.35); }
+
+.bubble.job { background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.6), transparent 28%),
+  linear-gradient(145deg, var(--job-a), var(--job-b)); }
+.bubble.job[data-state='queued'] { opacity: 0.8; }
+
+.bubble-x { position: absolute; top: -0.35rem; right: -0.35rem; width: 1.7rem; height: 1.7rem; padding: 0; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.75rem; line-height: 1; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+.bubble-x:hover { background: var(--down); border-color: var(--down); color: #fff; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes pop-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble, .bubble-wrap { animation: none; }
+  .bubble, .bubble-wrap, .bubble-x { transition: none; }
+}
