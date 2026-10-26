@@ -1,0 +1,25 @@
+{
+  "dependsOn": [
+    "postgres"
+  ],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run dev",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "api-migrator",
+  "appType": "migrator",
+  "name": "api-migrator",
+  "type": "migrator",
+  "stack": "agents",
+  "featuresEnabled": [
+    "prisma"
+  ]
+}
