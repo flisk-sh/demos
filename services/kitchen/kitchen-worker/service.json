@@ -1,0 +1,14 @@
+{
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "kitchen-worker",
+  "appType": "worker",
+  "stack": "kitchen",
+  "port": 4111,
+  "databaseName": "Flisk_restaurant",
+  "dependsOn": [
+    "kitchen-api"
+  ],
+  "healthCheckPath": "/health",
+  "featuresEnabled": []
+}
