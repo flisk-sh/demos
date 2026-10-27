@@ -1,0 +1,35 @@
+{
+  "handle": "pausecheck2",
+  "stack": "store",
+  "summary": "web · api · api-migrator",
+  "commands": [
+    "git clone -b demo/pausecheck2-store-0d24b6 https://github.com/flisk-sh/demos.git store-demo",
+    "cd store-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "vue app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    }
+  ],
+  "board": {
+    "noun": "products",
+    "one": "product",
+    "seedFile": "services/store/api/src/seed.ts",
+    "hasJobs": false
+  }
+}
