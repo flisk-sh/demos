@@ -1,0 +1,35 @@
+###############################################################################
+# SYSTEM-GENERATED - DO NOT EDIT
+# Stack feature: database-management
+# Source: .flisk/project.json phases.*.enabledStacks includes "database-management"
+# Regenerate with: flisk config regenerate
+###############################################################################
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dapp_demo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dapp_demo
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: postgres
+    ports:
+      - "${FLISK_BIND_ADDRESS:-127.0.0.1}:${FLISK_POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - dapp_demo_postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dapp_demo -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+networks:
+  database:
+    name: dapp_demo_database
+    external: true
+
+volumes:
+  dapp_demo_postgres_data:
