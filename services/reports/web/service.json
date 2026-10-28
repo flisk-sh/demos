@@ -1,0 +1,14 @@
+{
+  "appName": "web",
+  "appType": "frontend",
+  "framework": "vue",
+  "stack": "reports",
+  "port": 3400,
+  "basePath": "/reports",
+  "dependsOn": [
+    "reports-api",
+    "auth-emulator"
+  ],
+  "healthCheckPath": "/",
+  "schemaVersion": 1
+}
