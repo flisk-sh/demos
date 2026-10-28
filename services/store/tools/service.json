@@ -1,0 +1,23 @@
+{
+  "port": 4200,
+  "dependsOn": [],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run dev",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "healthCheckPath": "/health",
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "tools",
+  "appType": "mcp",
+  "featuresEnabled": [],
+  "name": "tools",
+  "type": "mcp",
+  "stack": "store"
+}
