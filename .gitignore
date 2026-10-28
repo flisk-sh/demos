@@ -1,0 +1,6 @@
+# Flisk (generated files and secrets)
+.env
+.flisk/.flisk-out/
+.flisk/.project-id
+.flisk/smoke/
+node_modules/
