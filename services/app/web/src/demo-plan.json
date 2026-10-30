@@ -1,0 +1,40 @@
+{
+  "handle": "unkonfined",
+  "stack": "app",
+  "summary": "web · api · api-migrator · jobs",
+  "commands": [
+    "git clone -b demo/unkonfined-app-de47fc https://github.com/flisk-sh/demos.git app-demo",
+    "cd app-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    },
+    {
+      "name": "jobs",
+      "appType": "worker",
+      "note": "background work: worker, snapshots"
+    }
+  ],
+  "board": {
+    "noun": "tasks",
+    "one": "task",
+    "seedFile": "services/app/api/src/seed.ts",
+    "hasJobs": true
+  }
+}
