@@ -1,0 +1,29 @@
+{
+  "port": 4200,
+  "dependsOn": [
+    "tools"
+  ],
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "dev": {
+    "command": "bun run dev",
+    "watch": [
+      "src/**/*"
+    ]
+  },
+  "healthCheckPath": "/health",
+  "$schema": "https://flisk.sh/schema.service.json",
+  "schemaVersion": 1,
+  "appName": "assistant",
+  "appType": "agent",
+  "featuresEnabled": [],
+  "name": "assistant",
+  "type": "agent",
+  "stack": "agents",
+  "agent": {
+    "runtime": "custom",
+    "durability": "files"
+  }
+}

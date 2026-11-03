@@ -1,0 +1,42 @@
+{
+  "handle": "sl1ma4",
+  "stack": "agents",
+  "summary": "web · api · api-migrator · tools · assistant",
+  "commands": [
+    "git clone -b demo/sl1ma4-agents-07d1ce https://github.com/flisk-sh/demos.git agents-demo",
+    "cd agents-demo",
+    "npm install -g @flisk-sh/flisk",
+    "flisk doctor",
+    "flisk up"
+  ],
+  "services": [
+    {
+      "name": "web",
+      "appType": "frontend",
+      "note": "react app"
+    },
+    {
+      "name": "api",
+      "appType": "backend",
+      "note": "bun + hono API"
+    },
+    {
+      "name": "api-migrator",
+      "appType": "migrator",
+      "note": "runs Prisma migrations against the shared Postgres before the api starts"
+    },
+    {
+      "name": "tools",
+      "appType": "mcp",
+      "note": "MCP server over Streamable HTTP at /mcp"
+    },
+    {
+      "name": "assistant",
+      "appType": "agent",
+      "note": "/health, /ready, x-session-id routing, checkpoints survive restarts"
+    }
+  ],
+  "chat": {
+    "assistant": "assistant"
+  }
+}
