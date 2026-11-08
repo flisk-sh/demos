@@ -144,7 +144,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/$PROJECT"
           [ -f .env.example ] && [ ! -f .env ] && cp .env.example .env
           flisk project --yes
-          if ! timeout 30m flisk up; then
+          if ! flisk up --wait --wait-timeout 1500; then
             echo "::warning::flisk up reported a failing resource; Tilt stays up so the live page shows it"
           fi
           flisk status || true
