@@ -38,7 +38,7 @@ permissions:
 env:
   ID: ${{ github.event.client_payload.id || inputs.id }}
   TILT_VERSION: 0.37.8
-  FLISK_VERSION: 1.4.2
+  FLISK_VERSION: 1.4.44
   CLOUDFLARED_VERSION: 2026.10.3
   BUN_VERSION: 1.2.x
   LIVE_MINUTES: ${{ vars.LIVE_MINUTES || 120 }}
