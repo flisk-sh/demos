@@ -1,0 +1,34 @@
+name: scripts test
+
+# live.yml checks out main and runs scripts/ on every live demo. Test them here first.
+
+on:
+  pull_request:
+    paths:
+      - scripts/**
+      - .github/workflows/scripts-test.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/*.test.mjs
