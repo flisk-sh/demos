@@ -10,7 +10,7 @@ name: live demo
 #
 # Live state lives here, not in the Worker's storage: while the demo is up, branch live/<id>
 # holds live.json with the tunnel links and the end time; the run deletes it when it ends.
-# demo.flisk.sh reads that branch, so a full KV quota can never keep a demo off the air.
+# demo.flisk.si reads that branch, so a full KV quota can never keep a demo off the air.
 # GitHub kills jobs after 6h, hence the timeout.
 
 run-name: live ${{ github.event.client_payload.id || inputs.id }}
@@ -204,7 +204,7 @@ jobs:
             echo "- API health: $app_url/api/health"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # One commit on branch live/<id>: demo.flisk.sh reads live.json from it. A push with
+      # One commit on branch live/<id>: demo.flisk.si reads live.json from it. A push with
       # GITHUB_TOKEN starts no workflow, and the branch has no workflow file anyway.
       - name: Publish the live links
         if: steps.claim.outputs.live == 'true'
