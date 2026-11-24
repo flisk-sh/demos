@@ -17,11 +17,13 @@ export function idOf(title) {
 // live: [{ id, until }] from the live/<id> branches (until is null when live.json is unreadable).
 export function plan({ runs, live, now = Date.now(), maxLive = 20, perPass = 2, perDay = 3 }) {
   const byId = new Map();
+  const activeIds = new Set();
   let running = 0;
   for (const run of runs) {
     const id = idOf(run.title);
     if (!id) continue;
     if (run.status === "in_progress") running += 1;
+    if (ACTIVE.has(run.status)) activeIds.add(id);
     if (now - Date.parse(run.createdAt) > DAY) continue;
     if (!byId.has(id)) byId.set(id, []);
     byId.get(id).push(run);
@@ -30,7 +32,7 @@ export function plan({ runs, live, now = Date.now(), maxLive = 20, perPass = 2, 
   const retry = [];
   for (const [id, list] of byId) {
     const [latest] = list;
-    if (liveIds.has(id) || list.some((r) => ACTIVE.has(r.status))) continue;
+    if (liveIds.has(id) || activeIds.has(id)) continue;
     if (latest.status !== "completed" || !RETRY.has(latest.conclusion)) continue;
     if (list.length >= perDay) continue;
     retry.push(id);
