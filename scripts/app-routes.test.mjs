@@ -14,6 +14,13 @@ test("a named api is reached under its own base, with the rest of the path", () 
   assert.deepEqual(route("/menu-api/api/operations-management?x=1", APP, routes), { host: "api.restaurant-demo.localhost", path: "/api/menu-api/api/operations-management?x=1" });
 });
 
+test("a named api mounted at the root gets a single leading slash", () => {
+  const host = "api.restaurant-demo.localhost";
+  const rootRoutes = parseRoutes(JSON.stringify({ "menu-api": { host, base: "/" } }));
+  assert.deepEqual(route("/menu-api/health?ready=1", APP, rootRoutes), { host, path: "/health?ready=1" });
+  assert.deepEqual(route("/menu-api?ready=1", APP, rootRoutes), { host, path: "/?ready=1" });
+});
+
 test("a frontend path stays on the app host, unchanged", () => {
   assert.deepEqual(route("/reservation-app/", APP, routes), { host: APP, path: "/reservation-app/" });
   assert.deepEqual(route("/", APP, routes), { host: APP, path: "/" });

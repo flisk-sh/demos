@@ -16,7 +16,7 @@ export function route(url, appHost, routes = {}) {
   if (named && NAME.test(named[1]) && routes[named[1]]) {
     const r = routes[named[1]];
     const rest = (named[2] ?? "/") + (named[3] ?? "");
-    return { host: r.host, path: `${r.base}${rest}` };
+    return { host: r.host, path: `${r.base.replace(/\/$/, "")}${rest}` };
   }
   if (/^\/api(\/|\?|$)/.test(url)) return { host: apiHost, path: url.replace(/^\/api(?=\/|\?|$)/, "/api/api") };
   return { host: appHost, path: url };
