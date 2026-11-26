@@ -49,6 +49,19 @@ test("runs older than a day do not count, so a demo can come back the next day",
   assert.deepEqual(out.retry, []);
 });
 
+test("an in-progress run from yesterday still blocks a retry of the same demo", () => {
+  const out = plan({
+    now,
+    live: [],
+    runs: [
+      run("live a-app-1", "completed", "failure", 30),
+      run("live b-app-2", "completed", "failure", 45),
+      run("live demo/a-app-1", "in_progress", null, 25 * 60),
+    ],
+  });
+  assert.deepEqual(out.retry, ["b-app-2"]);
+});
+
 test("live branches past their end (plus 10 minutes) or without a readable live.json are dropped", () => {
   const out = plan({
     now,
